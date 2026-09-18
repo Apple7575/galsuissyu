@@ -1,0 +1,25 @@
+import assert from 'node:assert/strict';
+import {build} from 'esbuild';
+import fs from 'node:fs/promises';
+import * as THREE from 'three';
+const out=new URL('../node_modules/.cache/terrain-check.mjs',import.meta.url);
+await fs.mkdir(new URL('.',out),{recursive:true});
+await build({stdin:{contents:"export * from './src/bridge-models';export * from './src/terrain-placement';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',packages:'external',outfile:out.pathname});
+const {bridgeModels,groundHeight,horizontalDistance}=await import(out.href);
+assert.equal(groundHeight({getTerrain:()=>null},[0,0]),0);
+assert.equal(groundHeight({getTerrain:()=>({}),queryTerrainElevation:()=>150},[0,0]),150,'already exaggerated, never multiply twice');
+assert.equal(horizontalDistance({x:3,y:4,z:800}),5,'altitude must not cull nearby mountain objects');
+globalThis.fetch=async()=>({ok:true,json:async()=>({features:[{id:7,geometry:{coordinates:[[0,0],[50,0],[100,0]]},properties:{width:10,name:'test bridge'}}]})});
+const scene=new THREE.Scene();
+const map={getPitch:()=>52,getZoom:()=>17,getBounds:()=>({getWest:()=>-1,getEast:()=>101,getSouth:()=>-1,getNorth:()=>1})};
+let scale=1;
+const local=([x,y])=>new THREE.Vector3(x,y,scale*(x===0?100:x===100?120:20));
+const bridge=bridgeModels(map,scene,local,()=>{});
+await new Promise(r=>setTimeout(r,0));bridge.refresh();
+assert.ok(Math.abs(bridge.heightAt(new THREE.Vector3(50,0,0),[7])-110.2)<.001,'bridge spans river valley');
+assert.equal(bridge.heightAt(new THREE.Vector3(50,0,0),[8]),undefined,'unrelated route must not snap to bridge');
+assert.equal(bridge.heightAt(new THREE.Vector3(50,20,0),[7]),undefined,'nearby riverbank must not snap to bridge');
+scale=2;bridge.refresh();assert.ok(Math.abs(bridge.heightAt(new THREE.Vector3(50,0,0),[7])-220.2)<.001,'deck follows display scale');
+for(const mesh of scene.children[0].children){const matrix=new THREE.Matrix4();for(let i=0;i<mesh.count;i++){mesh.getMatrixAt(i,matrix);assert.ok(matrix.elements.every(Number.isFinite));}}
+bridge.dispose();assert.equal(scene.children.length,0);
+console.log('Terrain placement: ground, scale, horizontal culling, bridge valley, route isolation, geometry and disposal passed.');

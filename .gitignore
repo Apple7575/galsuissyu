@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.sites-runtime/
+.env
+.env.*
+!.env.example
+*.log
+.wrangler/
+# GitHub collaborators restore these large generated assets with assets:restore.
+# Existing Sites-tracked copies remain tracked.
+/public/
+/research/

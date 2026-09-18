@@ -1,0 +1,11 @@
+export type Place={id:string;name:string;short:string;category:string;lat:number;lon:number;x:number;y:number;duration:number;source:string;phone:string;hours:string;access:string[];unknown:string;facility:string[];image:string};
+const base='https://access.visitkorea.or.kr/ms/detail.do?cotId=';
+export const places:readonly Place[]=Object.freeze([
+{id:'plaza',name:'대전엑스포시민광장',short:'엑스포시민광장',category:'광장 · 산책',lat:36.3683,lon:127.388,x:640,y:450,duration:30,source:base+'4e125d4c-9411-4ded-8474-1eab940c534e',phone:'042-250-1408',hours:'안내 자료 09:00–18:00 · 방문 전 문의',access:['광장 내부에 턱이 없는 넓은 공간으로 안내되어 있어요.','저상버스 관련 안내가 있지만 개별 운행 차량은 확인이 필요해요.'],unknown:'진입부 턱 · 공사 · 저상버스 운행 상태 미확인',facility:['rest'],image:'/assets/plaza.webp'},
+{id:'arboretum',name:'한밭수목원',short:'한밭수목원',category:'수목원 · 자연',lat:36.3685826106998,lon:127.386251630496,x:475,y:300,duration:60,source:base+'81cc7479-c010-4bdd-9a29-3121bb578cb8',phone:'042-270-8452',hours:'4–10월 05:00–21:00 · 동원 월 / 서원 화 휴원',access:['주출입구에 턱이 없다고 안내되어 있어요.','연구관리동에 엘리베이터와 장애인 화장실이 안내되어 있어요.','휠체어 대여 안내가 있어요. 일부 산책로는 흙·자갈 구간이에요.'],unknown:'산책로별 노면 · 시설 위치 · 당일 운영 상태 미확인',facility:['elevator','toilet','rest'],image:'/assets/arboretum.webp'},
+{id:'museum',name:'대전시립미술관',short:'시립미술관',category:'미술관 · 문화',lat:36.366988348016,lon:127.385704504338,x:290,y:445,duration:60,source:base+'16128884-a91d-4455-95bb-200e8f5ac024',phone:'042-120',hours:'관람 시간·휴관일·전시 요금은 공식 안내 확인',access:['주출입구에 완만한 경사로와 자동문이 안내되어 있어요.','엘리베이터에 점자·촉지도 안내가 있어요.','장애인 화장실과 비상벨, 휠체어 대여 안내가 있어요.'],unknown:'경사로 기울기 · 승강기 고장 여부 · 대여 재고 미확인',facility:['elevator','toilet'],image:'/assets/museum.webp'}
+]);
+export const conditions=['휠체어 이용','계단 피하기','가파른 경사 피하기','자주 쉬어가기','화장실 먼저 확인','유아차 동반','시각 안내 필요','청각 안내 필요'];
+export function distance(a:Place,b:Place){const r=Math.PI/180,dlat=(b.lat-a.lat)*r,dlon=(b.lon-a.lon)*r,h=Math.sin(dlat/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dlon/2)**2;return 6371000*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+export function makeRoute(from:string,to:string,via:boolean){const a=places.find(p=>p.id===from),b=places.find(p=>p.id===to);if(!a||!b||a.id===b.id)return [];return via?[a,...places.filter(p=>p.id!==from&&p.id!==to),b]:[a,b];}
+export function totalDistance(route:Place[]){return route.reduce((n,p,i)=>i?n+distance(route[i-1],p):n,0);}

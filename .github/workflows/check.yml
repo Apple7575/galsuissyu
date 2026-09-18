@@ -1,0 +1,17 @@
+name: Check
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run assets:restore
+      - run: npm run test:transit
+      - run: npm run build

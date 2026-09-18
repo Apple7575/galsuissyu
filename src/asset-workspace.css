@@ -1,0 +1,18 @@
+
+.asset-workspace{color:#24394b}.asset-workspace .dj-header{height:68px}.asset-workspace .dj-profile{margin-left:auto}.asset-workspace .city-intro h1{font-size:27px}.asset-workspace .city-filters{flex-wrap:wrap}.asset-workspace .city-asset strong{font-size:14px}.asset-workspace .city-asset small{font-size:12px}.asset-workspace .city-asset.chosen{border-color:#ce6b51;background:#fff8f4}.asset-workspace .city-filters button.chosen{background:#fff0e9;color:#a84f39}.asset-workspace .city-detail{background:#f5f7f8;border-color:#e1e7eb}.asset-workspace .city-detail button{background:#ce6b51}.asset-workspace .desktop-rail [aria-current=page]{background:#40576a}.asset-workspace .city-model-note{bottom:24px}
+@media(min-width:741px){
+ .asset-workspace .city-layout{height:calc(100dvh - 68px);position:relative;display:block}
+ .asset-workspace .desktop-rail{position:absolute;inset:0 auto 0 0;width:72px;box-sizing:border-box}
+ .asset-workspace .city-stage{position:absolute;inset:0 0 0 72px}
+ .asset-workspace .city-panel{position:absolute;inset:0 auto 0 72px;width:360px;z-index:7;transform:translateX(0);transition:transform .28s ease,visibility 0s}
+ .asset-workspace.panel-collapsed .city-panel{transform:translateX(-100%);visibility:hidden;pointer-events:none;transition:transform .28s ease,visibility 0s .28s}
+ .asset-workspace .sidebar-toggle{left:360px;transition:left .28s ease}
+ .asset-workspace .city-stage-heading,.asset-workspace .city-model-note{left:388px;transition:left .28s ease}
+ .asset-workspace.panel-collapsed .sidebar-toggle{left:0}
+ .asset-workspace.panel-collapsed .city-stage-heading,.asset-workspace.panel-collapsed .city-model-note{left:28px}
+ .asset-workspace .city-panel-scroll{padding:25px 22px}
+}
+@media(max-width:740px){.asset-workspace .dj-header{display:flex;height:60px;padding:0 14px}.asset-workspace .dj-brand strong{font-size:20px}.asset-workspace .dj-brand small,.asset-workspace .dj-location{display:none}.asset-workspace .dj-profile{font-size:12px}.asset-workspace .city-layout{height:calc(100dvh - 60px)}.asset-workspace .city-model-note{display:none}}
+@media(prefers-reduced-motion:reduce){.asset-workspace .city-panel,.asset-workspace .sidebar-toggle,.asset-workspace .city-stage-heading,.asset-workspace .city-model-note{transition:none!important}}
+
+.asset-workspace .city-panel-scroll{box-sizing:border-box;width:100%;overflow-x:hidden}.asset-workspace .city-asset-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.asset-workspace .city-asset{min-width:0}.asset-workspace .tourism-search{min-width:0}.asset-workspace .tourism-search input{min-width:0;max-width:100%;box-sizing:border-box}

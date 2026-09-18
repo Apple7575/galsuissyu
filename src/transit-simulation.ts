@@ -1,0 +1,64 @@
+import {distance,type Coordinate} from './city-data';
+import type {TransitGeometry,TransitRoute,TransitSimulation,TransitSimulationPoint,TransitSimulationSegment} from './transit-types';
+
+const pathDistance=(coordinates:Coordinate[])=>coordinates.slice(1).reduce((sum,p,i)=>sum+distance(coordinates[i],p),0);
+const same=(a:Coordinate,b:Coordinate)=>Math.abs(a[0]-b[0])<1e-9&&Math.abs(a[1]-b[1])<1e-9;
+
+function join(parts:Coordinate[][]){
+ const result:Coordinate[]=[];
+ for(const part of parts)for(const p of part)if(!result.length||!same(result.at(-1)!,p))result.push(p);
+ return result;
+}
+
+export function buildTransitSimulation(route:TransitRoute,geometry:TransitGeometry,origin:Coordinate,destination:Coordinate):TransitSimulation{
+ const groups=new Map<number,{mode:'bus'|'subway';parts:Coordinate[][]}>();
+ for(const feature of [...geometry.features].sort((a,b)=>a.properties.order-b.properties.order||a.properties.section-b.properties.section)){
+  const row=groups.get(feature.properties.order)??{mode:feature.properties.mode,parts:[]};row.parts.push(feature.geometry.coordinates as Coordinate[]);groups.set(feature.properties.order,row);
+ }
+ const rides=[...groups.entries()].sort((a,b)=>a[0]-b[0]).map(([,g])=>({mode:g.mode,coordinates:join(g.parts)})).filter(x=>x.coordinates.length>1);
+ let rideIndex=0,current=origin;
+ const drafts:Omit<TransitSimulationSegment,'startProgress'|'endProgress'>[]=[];
+ for(const [index,leg] of route.legs.entries()){
+  if(leg.mode==='walk'){
+   const next=rides.slice(rideIndex).find(r=>r.coordinates.length>1);const target=next?.coordinates[0]??destination;
+   const coordinates=same(current,target)?[current,current]:[current,target];
+   drafts.push({id:`walk-${index}`,mode:'walk',line:'',start:leg.start,end:leg.end,minutes:Math.max(.35,leg.minutes??pathDistance(coordinates)/65),coordinates});current=target;continue;
+  }
+  let at=rides.findIndex((r,i)=>i>=rideIndex&&r.mode===leg.mode);if(at<0)at=rideIndex;
+  const ride=rides[at];rideIndex=Math.max(rideIndex,at+1);
+  let coordinates=(ride?.coordinates??[leg.from??current,leg.to??destination]).filter(Boolean) as Coordinate[];
+  if(coordinates.length<2)coordinates=[current,destination];
+  const expected=leg.from??current;if(distance(coordinates.at(-1)!,expected)<distance(coordinates[0],expected))coordinates=[...coordinates].reverse();
+  drafts.push({id:`${leg.mode}-${index}`,mode:leg.mode,line:leg.line,start:leg.start,end:leg.end,minutes:Math.max(.5,leg.minutes??pathDistance(coordinates)/(leg.mode==='subway'?550:320)),coordinates});current=coordinates.at(-1)!;
+ }
+ if(!same(current,destination))drafts.push({id:'walk-final',mode:'walk',line:'',start:null,end:null,minutes:Math.max(.35,pathDistance([current,destination])/65),coordinates:[current,destination]});
+ const totalMinutes=Math.max(1,drafts.reduce((sum,s)=>sum+s.minutes,0));let elapsed=0;
+ const segments=drafts.map(s=>{const startProgress=elapsed/totalMinutes;elapsed+=s.minutes;return {...s,startProgress,endProgress:elapsed/totalMinutes};});
+ return {route,segments,coordinates:join(segments.map(s=>s.coordinates)),totalMinutes};
+}
+
+export function transitPoint(simulation:TransitSimulation,progress:number):TransitSimulationPoint{
+ const p=Math.max(0,Math.min(1,progress));const segment=simulation.segments.find(s=>p<s.endProgress)??simulation.segments.at(-1)!;
+ const segmentProgress=Math.max(0,Math.min(1,(p-segment.startProgress)/(segment.endProgress-segment.startProgress||1)));
+ // Reserve the ends of each ride for stationary boarding/alighting, not teleporting.
+ const dwell=.10;
+ const phase=p>=1?'arrived':segment.mode==='walk'?'walk':segmentProgress<dwell?'boarding':segmentProgress>1-dwell?'alighting':'riding';
+ const rideProgress=Math.max(0,Math.min(1,(segmentProgress-dwell)/(1-2*dwell)));
+ const pathProgress=segment.mode==='walk'?segmentProgress:rideProgress*rideProgress*(3-2*rideProgress);
+ const phaseProgress=phase==='boarding'?segmentProgress/dwell:phase==='alighting'?(segmentProgress-1+dwell)/dwell:pathProgress;
+ const lengths=[0];for(let i=1;i<segment.coordinates.length;i++)lengths.push(lengths[i-1]+distance(segment.coordinates[i-1],segment.coordinates[i]));
+ const target=pathProgress*(lengths.at(-1)||0);let i=1;while(i<lengths.length-1&&lengths[i]<target)i++;
+ const a=segment.coordinates[Math.max(0,i-1)],b=segment.coordinates[Math.min(i,segment.coordinates.length-1)],t=(target-lengths[Math.max(0,i-1)])/(lengths[Math.min(i,lengths.length-1)]-lengths[Math.max(0,i-1)]||1);
+ return {coordinate:[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t],heading:Math.atan2(b[1]-a[1],(b[0]-a[0])*Math.cos(a[1]*Math.PI/180)),segment,segmentProgress,pathProgress,phase,phaseProgress};
+}
+
+export function transitStatus(point:TransitSimulationPoint){
+ const vehicle=point.segment.mode==='bus'?'버스':'지하철';
+ if(point.phase==='arrived')return '도착했어요 · 미리보기 완료';
+ if(point.phase==='walk')return '보행 이동';
+ return `${point.segment.line||vehicle} · ${point.phase==='boarding'?'승차 중':point.phase==='alighting'?'하차 중':'탑승 이동 중'}`;
+}
+
+export function transitSimulationGeoJSON(simulation:TransitSimulation):GeoJSON.FeatureCollection<GeoJSON.LineString>{
+ return {type:'FeatureCollection',features:simulation.segments.map((s,index)=>({type:'Feature',properties:{mode:s.mode,line:s.line,order:index},geometry:{type:'LineString',coordinates:s.coordinates}}))};
+}

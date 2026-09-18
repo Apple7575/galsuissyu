@@ -1,0 +1,8 @@
+import fs from 'node:fs/promises';import * as THREE from 'three';import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';import {GLTFExporter} from 'three/addons/exporters/GLTFExporter.js';
+globalThis.FileReader=class{async readAsArrayBuffer(b){this.result=await b.arrayBuffer();this.onloadend?.();}};
+const b=await fs.readFile(process.argv[2]);const gltf=await new GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength),'');const assets=[];
+for(const id of ['metro-train','metro-entrance','metro-lift']){
+ const source=gltf.scene.getObjectByName('transit_'+id);if(!source)throw Error('Missing '+id);const model=source.clone(true);model.position.set(0,0,0);const scene=new THREE.Group();scene.add(model);scene.updateMatrixWorld(true);const bounds=new THREE.Box3().setFromObject(scene),center=bounds.getCenter(new THREE.Vector3());model.position.set(-center.x,-bounds.min.y,-center.z);scene.updateMatrixWorld(true);let triangles=0;scene.traverse(o=>{if(o.isMesh){if(!o.geometry.attributes.position.array.every(Number.isFinite))throw Error('Invalid geometry');triangles+=(o.geometry.index?.count??o.geometry.attributes.position.count)/3;}});
+ const out=await new GLTFExporter().parseAsync(scene,{binary:true});await fs.writeFile('public/models/pilot/'+id+'.glb',Buffer.from(out));assets.push({id,bytes:out.byteLength,triangles,dimensions:bounds.getSize(new THREE.Vector3()).toArray(),placement:'gallery only; station entrance coordinates unverified'});
+}
+await fs.writeFile('public/models/pilot/transit-manifest.json',JSON.stringify({projectId:'0281b395-7f0e-4983-84a7-adc0c2e91b9d',revision:Number(process.argv[3]),source:'Higgsfield 3D Jutsu',assets},null,2));console.log(assets);

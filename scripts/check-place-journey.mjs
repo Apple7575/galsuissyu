@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {build} from 'esbuild';
+await build({stdin:{contents:"export * from './src/slope-summary';export * from './src/route-engine';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',outfile:'node_modules/.cache/journey-check.mjs'});
+const {slopeSummary,solveRoute}=await import('../node_modules/.cache/journey-check.mjs');
+const segment=(start,end,grade,kind)=>({start,end,grade,kind,coordinates:[[127,36],[127.001,36]]});
+const runs=slopeSummary({distance:600,connectorDistance:0,minutes:12,elevation:{segments:[segment(0,100,2,'up'),segment(100,300,5,'up'),segment(300,400,null,'unknown'),segment(400,600,-3,'down')]}});
+assert.equal(runs.length,3);assert.equal(runs[0].length,300);assert.equal(runs[0].rise,12);assert.equal(runs[0].minutes,6);assert.equal(runs[1].rise,null);assert.equal(runs[2].rise,-6);
+const places=JSON.parse(fs.readFileSync('public/data/places.json')).places;
+const bridge=places.find(p=>p.id==='way/28889891');assert.ok(bridge);
+const network=JSON.parse(fs.readFileSync('public/data/walk-network.json'));
+const result=solveRoute(network,[127.3880498,36.3741467],[bridge.lon,bridge.lat],{wheelchair:true,steps:true,rough:false,steep:true,rest:false});
+assert.ok(result.ways.includes(28889891));assert.ok(result.distance>300&&result.distance<500);assert.ok(result.sections.some(s=>s.kinds.includes('bridge')));
+console.log('Slope merging, height, duration, unknown gaps and Expo Bridge traversal passed:',Math.round(result.distance),'m');
